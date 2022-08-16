@@ -1,4 +1,3 @@
-# import selenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -6,9 +5,6 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import StaleElementReferenceException
 from bs4 import BeautifulSoup
 import time
-
-
-# import sys
 
 
 class Scraper:
@@ -52,7 +48,7 @@ class Scraper:
             pass
         return False
 
-    def load_page(self, url):
+    def load_page(self, url, scroll_time=5):
         # driver = self.driver
         self.driver.get(url)
         start = time.time()
@@ -64,7 +60,7 @@ class Scraper:
             final_scroll += 1000
             time.sleep(0.5)
             end = time.time()
-            if round(end - start) > 5:
+            if round(end - start) > scroll_time:
                 break
         # return driver
 
@@ -1263,6 +1259,147 @@ class Scraper:
             })
         return courses
 
+    def get_recommendations(self, profile_url):
+        url_received = profile_url + 'details/recommendations/?detailScreenTabIndex=0'
+        url_given = profile_url + 'details/recommendations/?detailScreenTabIndex=1'
+        recommendations_received = {}
+        recommendations_given = {}
+
+        # RECEIVED
+        try:
+            self.load_page(url_received, 15)
+            src = self.driver.page_source
+            soup = BeautifulSoup(src, 'lxml')
+
+            # NTHN
+            try:
+                nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
+                    'div', {'class': 'pvs-list__container'}).find(
+                    'li',
+                    {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                    'h2').get_text().strip()
+                if nthn == "You haven't received a recommendation yet":
+                    recommendations_received = None
+            except AttributeError:
+                pass
+
+            if recommendations_received == {}:
+                recommendations_received_list = soup.find('div', {'class': 'artdeco-tabpanel active ember-view'}).find(
+                    'div', {'class': 'pvs-list__container'}).find_all(
+                    'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+
+                for i, j in enumerate(recommendations_received_list):
+
+                    big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
+
+                    display_flex = big_display_flex.find('div', {'class': 'display-flex flex-row justify-space-between'})
+                    link = display_flex.find(
+                        'a', {'class': 'optional-action-target-wrapper display-flex flex-column full-width'}).get('href')
+                    name = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip()
+                    try:
+                        headline = display_flex.find('span', {'class': 't-14 t-normal'}).find(
+                            'span', {'class': 'visually-hidden'}).get_text().strip()
+                    except:
+                        headline = None
+
+                    date_relationship = display_flex.find('span', {'class': 't-14 t-normal t-black--light'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip().split(',')
+                    relationship = date_relationship.pop()
+                    date = ','.join(map(str, date_relationship))
+
+                    outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
+                    recommendation = outer_container.find('li', {'class': ''}).find(
+                        'div', {'class': 'display-flex align-items-center t-14 t-normal t-black'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip()
+
+                    recommendations_received.update({
+                        i: {
+                            'Name': name,
+                            'Profile_url': link,
+                            'Headline': headline,
+                            'Date': date,
+                            'Relationship': relationship,
+                            'Recommendation': recommendation
+                        }
+                    })
+            else:
+                pass
+        except:
+            pass
+
+        # GIVEN
+        try:
+            self.load_page(url_given, 15)
+            src = self.driver.page_source
+            soup = BeautifulSoup(src, 'lxml')
+
+            # NTHN
+            try:
+                nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
+                    'div', {'class': 'pvs-list__container'}).find(
+                    'li',
+                    {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                    'h2').get_text().strip()
+                if nthn == "You haven't written any recommendations yet":
+                    recommendations_given = None
+            except AttributeError:
+                pass
+
+            if recommendations_given == {}:
+                recommendations_given_list = soup.find('div', {'class': 'artdeco-tabpanel active ember-view'}).find(
+                    'div', {'class': 'pvs-list__container'}).find_all(
+                    'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+
+                for i, j in enumerate(recommendations_given_list):
+
+                    big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
+                    display_flex = big_display_flex.find(
+                        'div', {'class': 'display-flex flex-row justify-space-between'})
+
+                    link = display_flex.find(
+                        'a', {'class': 'optional-action-target-wrapper display-flex flex-column full-width'}).get(
+                        'href')
+                    name = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip()
+                    try:
+                        headline = display_flex.find('span', {'class': 't-14 t-normal'}).find(
+                            'span', {'class': 'visually-hidden'}).get_text().strip()
+                    except:
+                        headline = None
+
+                    date_relationship = display_flex.find('span', {'class': 't-14 t-normal t-black--light'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip().split(',')
+                    relationship = date_relationship.pop()
+                    date = ','.join(map(str, date_relationship))
+
+                    outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
+                    recommendation = outer_container.find('li', {'class': ''}).find(
+                        'div', {'class': 'display-flex align-items-center t-14 t-normal t-black'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip()
+
+                    recommendations_given.update({
+                        i: {
+                            'Name': name,
+                            'Profile_url': link,
+                            'Headline': headline,
+                            'Date': date,
+                            'Relationship': relationship,
+                            'Recommendation': recommendation
+                        }
+                    })
+            else:
+                pass
+        except Exception as e:
+            raise e
+            pass
+
+        recommendations = {
+            'Received': recommendations_received,
+            'Given': recommendations_given
+        }
+        return recommendations
+
     def scrape(self, profile_url):
 
         data = {
@@ -1281,6 +1418,7 @@ class Scraper:
             'Publications': None,
             'Honors & Awards': None,
             'Courses': None,
+            'Recommendations': None,
         }
 
         # driver = self.load_page(profile_url)
@@ -1357,6 +1495,11 @@ class Scraper:
         try:
             courses = self.get_courses(profile_url)
             data['Courses'] = courses
+        except Exception as e:
+            raise e
+        try:
+            recommendations = self.get_recommendations(profile_url)
+            data['Recommendations'] = recommendations
         except Exception as e:
             raise e
 
