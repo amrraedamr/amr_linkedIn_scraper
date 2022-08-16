@@ -73,6 +73,22 @@ class Scraper:
             self.login()
             self.scrape_profile(profile_url)
 
+    def get_profile_picture_url(self, profile_url):
+        try:
+            url = profile_url + 'overlay/photo/'
+            self.driver.get(url)
+            src = self.driver.page_source
+            soup = BeautifulSoup(src, 'lxml')
+
+            panel = soup.find(
+                'div', {'class': 'pv-member-photo-modal__content pv-member-photo-modal__content--padded'})
+            profile_picture_url = panel.find('img').get('src')
+
+            return profile_picture_url
+        except Exception as e:
+            print(e)
+        return None
+
     def get_about(self, soup):
         try:
             about = soup.find('div', {'class': 'display-flex ph5 pv3'}).find("span").get_text().strip()
@@ -1519,6 +1535,7 @@ class Scraper:
 
         data = {
             'Name': None,
+            'Profile_picture_url': None,
             'Location': None,
             'Headline': None,
             'Contact_info_url': None,
@@ -1542,6 +1559,11 @@ class Scraper:
         src = self.driver.page_source
         soup = BeautifulSoup(src, 'lxml')
 
+        try:
+            profile_picture_url = self.get_profile_picture_url(profile_url)
+            data['Profile_picture_url'] = profile_picture_url
+        except Exception as e:
+            raise e
         try:
             name = self.get_name(soup)
             data['Name'] = name
