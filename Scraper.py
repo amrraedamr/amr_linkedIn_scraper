@@ -1,7 +1,9 @@
-import selenium
+# import selenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import StaleElementReferenceException
 from bs4 import BeautifulSoup
 import time
 
@@ -224,23 +226,25 @@ class Scraper:
                         location = None
 
                     try:
+                        description = None
+                        skills = None
+                        medias = []
                         inner_outer_container = inner_big_display_flex.find(
                             'div', {'class': 'pvs-list__outer-container'})
 
                         inner_outer_container_list = inner_outer_container.find_all('li', {'class': ''})
-                        medias = []
+
                         if len(inner_outer_container_list) == 3:
                             description = inner_outer_container_list[0].find(
                                 'span', {'class': 'visually-hidden'}).get_text().strip()
                             skills = inner_outer_container_list[1].find(
                                 'span', {'class': 'visually-hidden'}).get_text().strip().replace('Skills:', '')
                             media_list = inner_outer_container_list[2].find_all(
-                                'li', {'class': 'pvs-list__item--with-top-padding '})
+                                'a', {'class': 'optional-action-target-wrapper'})
                             for media in media_list:
-                                temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get('href')
-                                medias.append(temp)
-                        elif len(inner_outer_container_list) == 2:
+                                medias.append(media.get('href'))
 
+                        elif len(inner_outer_container_list) == 2:
                             # description
                             try:
                                 temp = inner_outer_container_list[0].find(
@@ -254,11 +258,9 @@ class Scraper:
                                         medias = []
                                     else:
                                         media_list = inner_outer_container_list[1].find_all(
-                                            'li', {'class': 'pvs-list__item--with-top-padding'})
+                                            'a', {'class': 'optional-action-target-wrapper'})
                                         for media in media_list:
-                                            temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get(
-                                                'href')
-                                            medias.append(temp)
+                                            medias.append(media.get('href'))
                             except:
                                 pass
 
@@ -275,22 +277,19 @@ class Scraper:
                                         medias = []
                                     else:
                                         media_list = inner_outer_container_list[1].find_all(
-                                            'li', {'class': 'pvs-list__item--with-top-padding'})
+                                            'a', {'class': 'optional-action-target-wrapper'})
                                         for media in media_list:
-                                            temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get(
-                                                'href')
-                                            medias.append(temp)
+                                            medias.append(media.get('href'))
                             except:
                                 pass
 
                             # medias
                             try:
                                 media_list = inner_outer_container_list[0].find_all(
-                                    'li', {'class': 'pvs-list__item--with-top-padding'})
+                                    'a', {'class': 'optional-action-target-wrapper'})
                                 if media_list:
                                     for media in media_list:
-                                        temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get('href')
-                                        medias.append(temp)
+                                        medias.append(media.get('href'))
                                     temp = inner_outer_container_list[0].find(
                                         'span', {'class': 'visually-hidden'}).get_text().strip()
                                     if temp and temp.startswith('Skills:'):
@@ -301,7 +300,42 @@ class Scraper:
                                         skills = None
                             except:
                                 pass
+
+                        elif len(inner_outer_container_list) == 1:
+                            # description
+                            try:
+                                temp = inner_outer_container_list[0].find(
+                                    'span', {'class': 'visually-hidden'}).get_text().strip()
+                                if temp and not temp.startswith('Skills:'):
+                                    description = temp
+                            except:
+                                pass
+                            # skills
+                            try:
+                                temp = inner_outer_container_list[0].find(
+                                    'span', {'class': 'visually-hidden'}).get_text().strip()
+                                if temp and temp.startswith('Skills:'):
+                                    skills = temp.replace('Skills:', '')
+                            except:
+                                pass
+                            # medias
+                            try:
+                                media_list = inner_outer_container_list[0].find_all(
+                                    'a', {'class': 'optional-action-target-wrapper'})
+                                if media_list:
+                                    for media in media_list:
+                                        medias.append(media.get('href'))
+                            except:
+                                pass
+                        else:
+                            description = None
+                            skills = None
+                            medias = []
+
                     except:
+                        description = None
+                        skills = None
+                        medias = []
                         pass
 
                     experiences.update({
@@ -322,9 +356,19 @@ class Scraper:
             except:
                 pass
 
-            display_flex = j.find('div', {'class': 'display-flex flex-row justify-space-between'})
-            title = display_flex.find('div', {'class': 'display-flex align-items-center'}).find('span', {
-                'class': 'visually-hidden'}).get_text().strip()
+            big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
+
+            try:
+                big_outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
+                inner_list = big_outer_container.find_all('li', {'class': 'pvs-list__paged-list-item'})
+                if inner_list:
+                    continue
+            except:
+                pass
+
+            display_flex = big_display_flex.find('div', {'class': 'display-flex flex-row justify-space-between'})
+            title = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
+                'span', {'class': 'visually-hidden'}).get_text().strip()
 
             temp = display_flex.find('span', {'class': 't-14 t-normal'}).find('span', {
                 'class': 'visually-hidden'}).get_text().strip().split(' · ')
@@ -337,31 +381,33 @@ class Scraper:
 
             temp = display_flex.find_all('span', {'class': 't-14 t-normal t-black--light'})
             if len(temp) == 2:
-                dates = temp[0].find('span', {'class': 'visually-hidden'}).get_text().strip().split(' · ')
-                from_to = dates[0].split(' - ')
+                dates_duration = temp[0].find('span', {'class': 'visually-hidden'}).get_text().strip().split(' · ')
+                from_to = dates_duration[0].split(' - ')
                 if len(from_to) == 2:
                     fromm = from_to[0]
                     to = from_to[1]
                 else:
                     fromm = from_to[0]
                     to = None
-                duration = dates[1]
+                duration = dates_duration[1]
                 location = temp[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
             else:
-                dates = temp[0].find('span', {'class': 'visually-hidden'}).get_text().strip().split(' · ')
-                from_to = dates[0].split(' - ')
+                dates_duration = temp[0].find('span', {'class': 'visually-hidden'}).get_text().strip().split(' · ')
+                from_to = dates_duration[0].split(' - ')
                 if len(from_to) == 2:
                     fromm = from_to[0]
                     to = from_to[1]
                 else:
                     fromm = from_to[0]
                     to = None
-                duration = dates[1]
+                duration = dates_duration[1]
                 location = None
 
             try:
-                outer_container = j.find_all('div', {'class': 'pvs-list__outer-container'})
+                outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
                 outer_container_list = outer_container.find_all('li', {'class': ''})
+                description = None
+                skills = None
                 medias = []
                 if len(outer_container_list) == 3:
                     description = outer_container_list[0].find(
@@ -369,10 +415,10 @@ class Scraper:
                     skills = outer_container_list[1].find(
                         'span', {'class': 'visually-hidden'}).get_text().strip().replace('Skills:', '')
                     media_list = outer_container_list[2].find_all(
-                        'li', {'class': 'pvs-list__item--with-top-padding '})
+                        'a', {'class': 'optional-action-target-wrapper'})
                     for media in media_list:
-                        temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get('href')
-                        medias.append(temp)
+                        medias.append(media.get('href'))
+
                 elif len(outer_container_list) == 2:
 
                     # description
@@ -388,11 +434,9 @@ class Scraper:
                                 medias = []
                             else:
                                 media_list = outer_container_list[1].find_all(
-                                    'li', {'class': 'pvs-list__item--with-top-padding'})
+                                    'a', {'class': 'optional-action-target-wrapper'})
                                 for media in media_list:
-                                    temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get(
-                                        'href')
-                                    medias.append(temp)
+                                    medias.append(media.get('href'))
                     except:
                         pass
 
@@ -409,22 +453,20 @@ class Scraper:
                                 medias = []
                             else:
                                 media_list = outer_container_list[1].find_all(
-                                    'li', {'class': 'pvs-list__item--with-top-padding'})
+                                    'a', {'class': 'optional-action-target-wrapper'})
                                 for media in media_list:
-                                    temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get('href')
-                                    medias.append(temp)
+                                    medias.append(media.get('href'))
                     except:
                         pass
 
                     # medias
                     try:
                         media_list = outer_container_list[0].find_all(
-                            'li', {'class': 'pvs-list__item--with-top-padding'})
+                            'a', {'class': 'optional-action-target-wrapper'})
                         if media_list:
                             for media in media_list:
-                                temp = media.find('a', {'class': 'optional-action-target-wrapper'}).get('href')
-                                medias.append(temp)
-                            temp = outer_container_list[0].find(
+                                medias.append(media.get('href'))
+                            temp = outer_container_list[1].find(
                                 'span', {'class': 'visually-hidden'}).get_text().strip()
                             if temp and temp.startswith('Skills:'):
                                 skills = temp.replace('Skills:', '')
@@ -434,10 +476,43 @@ class Scraper:
                                 skills = None
                     except:
                         pass
-            except AttributeError:
+
+                elif len(outer_container_list) == 1:
+                    # description
+                    try:
+                        temp = outer_container_list[0].find(
+                            'span', {'class': 'visually-hidden'}).get_text().strip()
+                        if temp and not temp.startswith('Skills:'):
+                            description = temp
+                    except:
+                        pass
+                    # skills
+                    try:
+                        temp = outer_container_list[0].find(
+                            'span', {'class': 'visually-hidden'}).get_text().strip()
+                        if temp and temp.startswith('Skills:'):
+                            skills = temp.replace('Skills:', '')
+                    except:
+                        pass
+                    # medias
+                    try:
+                        media_list = outer_container_list[0].find_all(
+                            'a', {'class': 'optional-action-target-wrapper'})
+                        if media_list:
+                            for media in media_list:
+                                medias.append(media.get('href'))
+                    except:
+                        pass
+                else:
+                    description = None
+                    skills = None
+                    medias = []
+
+            except:
                 description = None
                 skills = None
                 medias = []
+                pass
 
             experiences.update({
                 counter: {
@@ -585,7 +660,6 @@ class Scraper:
             'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
 
         for i, j in enumerate(cer_list):
-            name, link, issuing_organization = None, None, None
             issue_date, expiry_date, credential_id = None, None, None,
             try:
                 nthn = j.find('h2').get_text().strip()
@@ -641,8 +715,9 @@ class Scraper:
                         credential_id = temp[1].replace(li[1], '')
                     else:
                         issue_date, expiry_date, credential_id = None, None, None
-            except Exception as e:
-                raise e
+            except:
+                issue_date, expiry_date, credential_id = None, None, None
+                pass
 
             certifications.update({
                 i: {
@@ -656,6 +731,7 @@ class Scraper:
 
         return certifications
 
+    # ADD IF PASSED LINKEDIN ASSESSMENT TEST FIELD
     def get_skills(self, profile_url):  # CHANGE endorsement_profile_list TO BE DICTIONARY OF ENDORSERS
         url = profile_url + 'details/skills/'
         skill_list = []
@@ -729,13 +805,13 @@ class Scraper:
                                     By.XPATH, '/html/body/div[3]/div/div/div[2]/div/div[2]/div/div/div[2]/div/button')
                                 element.click()
                                 time.sleep(0.25)
-                            except selenium.common.exceptions.NoSuchElementException:
+                            except NoSuchElementException:
                                 break
-                            except selenium.common.exceptions.StaleElementReferenceException:
+                            except StaleElementReferenceException:
                                 var = False
 
                         src2 = driver1.page_source
-                        soup2 = BeautifulSoup(src2)
+                        soup2 = BeautifulSoup(src2, 'lxml')
                         endorsement_profile_list = []
                         try:
                             list__container = soup2.find('div', {'class': 'pvs-list__container'})
@@ -804,7 +880,6 @@ class Scraper:
             })
         return langs
 
-    # Other authors work needs heavy work to be done. later
     def get_publications(self, profile_url):
         url = profile_url + 'details/publications/'
         publications = {}
@@ -862,82 +937,106 @@ class Scraper:
                 else:
                     publisher = None
                     date = None
-            except Exception as e:
+            except:
                 publisher = None
                 date = None
-                raise e
 
             other_authors_str = 'Other authors'
-            outer_container = j.find('div', {'class': 'pvs-list__outer-container'})
-            outer_container_list = outer_container.find_all('li', {'class': ''})
-            other_authors = []
-            driver1 = self.driver
 
-            if len(outer_container_list) == 3:
-                publication_url = outer_container_list[0].find('div', {'class': 'pv2'}).find('a').get('href')
-                description = outer_container_list[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
-                # OTHER AUTHORS
-                url = outer_container_list[2].find('div', {'class': 'overflow-hidden full-width'}).find(
-                    'a', {'class': 'optional-action-target-wrapper'}).get('href')
-                driver1.get(url)
-                time.sleep(0.5)
-                temp_src = driver1.page_source
-                temp_soup = BeautifulSoup(temp_src, 'lxml')
-                artdeco_model = temp_soup.find(
-                    'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
-                                     'ember-view pvs-modal__content'})
-                other_authors_list = artdeco_model.find_all(
-                    'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
-                for k in other_authors_list:
-                    temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
-                    other_authors.append(temp_author)
+            try:
+                outer_container = j.find('div', {'class': 'pvs-list__outer-container'})
+                outer_container_list = outer_container.find_all('li', {'class': ''})
+                other_authors = []
+                driver1 = self.driver
 
-            elif len(outer_container_list) == 2:
+                if len(outer_container_list) == 3:
+                    publication_url = outer_container_list[0].find('div', {'class': 'pv2'}).find('a').get('href')
+                    description = outer_container_list[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
+                    # OTHER AUTHORS
+                    url = outer_container_list[2].find('div', {'class': 'overflow-hidden full-width'}).find(
+                        'a', {'class': 'optional-action-target-wrapper'}).get('href')
+                    driver1.get(url)
+                    time.sleep(0.5)
+                    temp_src = driver1.page_source
+                    temp_soup = BeautifulSoup(temp_src, 'lxml')
+                    artdeco_model = temp_soup.find(
+                        'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
+                                         'ember-view pvs-modal__content'})
+                    other_authors_list = artdeco_model.find_all(
+                        'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+                    for k in other_authors_list:
+                        temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
+                        other_authors.append(temp_author)
 
-                # description
-                try:
-                    temp = outer_container_list[0].find('span', {'class': 'visually-hidden'}).get_text().strip()
-                    if temp and temp != other_authors_str:
-                        description = temp
-                        temp = outer_container_list[1].find('div', {'class': 'pv2'}).find('a').get('href')
-                        if temp:
-                            publication_url = temp
-                            other_authors = []
-                        else:
-                            publication_url = None
-                            url = outer_container_list[1].find('div', {'class': 'overflow-hidden full-width'}).find(
-                                'a', {'class': 'optional-action-target-wrapper'}).get('href')
-                            driver1.get(url)
-                            time.sleep(0.5)
-                            temp_src = driver1.page_source
-                            temp_soup = BeautifulSoup(temp_src, 'lxml')
-                            artdeco_model = temp_soup.find(
-                                'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
-                                                 'ember-view pvs-modal__content'})
-                            other_authors_list = artdeco_model.find_all(
-                                'li',
-                                {
-                                    'class': 'pvs-list__paged-list-item artdeco-list__item '
-                                             'pvs-list__item--line-separated'})
-                            for k in other_authors_list:
-                                temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
-                                other_authors.append(temp_author)
-                except Exception as e:
-                    print(e, 'line 169')
-                    pass
+                elif len(outer_container_list) == 2:
 
-                # publication_url
-                try:
-                    temp = outer_container_list[0].find('div', {'class': 'pv2'}).find('a').get('href')
-                    if temp:
-                        publication_url = temp
-                        temp = outer_container_list[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
+                    # description
+                    try:
+                        temp = outer_container_list[0].find('span', {'class': 'visually-hidden'}).get_text().strip()
                         if temp and temp != other_authors_str:
                             description = temp
-                            other_authors = []
-                        else:
-                            description = None
-                            url = outer_container_list[1].find('div', {'class': 'overflow-hidden full-width'}).find(
+                            temp = outer_container_list[1].find('div', {'class': 'pv2'}).find('a').get('href')
+                            if temp:
+                                publication_url = temp
+                                other_authors = []
+                            else:
+                                publication_url = None
+                                url = outer_container_list[1].find('div', {'class': 'overflow-hidden full-width'}).find(
+                                    'a', {'class': 'optional-action-target-wrapper'}).get('href')
+                                driver1.get(url)
+                                time.sleep(0.5)
+                                temp_src = driver1.page_source
+                                temp_soup = BeautifulSoup(temp_src, 'lxml')
+                                artdeco_model = temp_soup.find(
+                                    'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
+                                                     'ember-view pvs-modal__content'})
+                                other_authors_list = artdeco_model.find_all(
+                                    'li',
+                                    {
+                                        'class': 'pvs-list__paged-list-item artdeco-list__item '
+                                                 'pvs-list__item--line-separated'})
+                                for k in other_authors_list:
+                                    temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
+                                    other_authors.append(temp_author)
+                    except:
+                        pass
+
+                    # publication_url
+                    try:
+                        temp = outer_container_list[0].find('div', {'class': 'pv2'}).find('a').get('href')
+                        if temp:
+                            publication_url = temp
+                            temp = outer_container_list[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
+                            if temp and temp != other_authors_str:
+                                description = temp
+                                other_authors = []
+                            else:
+                                description = None
+                                url = outer_container_list[1].find('div', {'class': 'overflow-hidden full-width'}).find(
+                                    'a', {'class': 'optional-action-target-wrapper'}).get('href')
+                                driver1.get(url)
+                                time.sleep(0.5)
+                                temp_src = driver1.page_source
+                                temp_soup = BeautifulSoup(temp_src, 'lxml')
+                                artdeco_model = temp_soup.find(
+                                    'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
+                                                     'ember-view pvs-modal__content'})
+                                other_authors_list = artdeco_model.find_all(
+                                    'li',
+                                    {
+                                        'class': 'pvs-list__paged-list-item artdeco-list__item '
+                                                 'pvs-list__item--line-separated'})
+                                for k in other_authors_list:
+                                    temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
+                                    other_authors.append(temp_author)
+                    except:
+                        pass
+
+                    # other_authors
+                    try:
+                        temp = outer_container_list[0].find('span', {'class': 'visually-hidden'}).get_text().strip()
+                        if temp and temp == other_authors_str:
+                            url = outer_container_list[0].find('div', {'class': 'overflow-hidden full-width'}).find(
                                 'a', {'class': 'optional-action-target-wrapper'}).get('href')
                             driver1.get(url)
                             time.sleep(0.5)
@@ -949,19 +1048,36 @@ class Scraper:
                             other_authors_list = artdeco_model.find_all(
                                 'li',
                                 {
-                                    'class': 'pvs-list__paged-list-item artdeco-list__item '
-                                             'pvs-list__item--line-separated'})
+                                    'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
                             for k in other_authors_list:
                                 temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
                                 other_authors.append(temp_author)
-                except Exception as e:
-                    print(e, 'line 199')
-                    pass
 
-                # other_authors
-                try:
-                    temp = outer_container_list[0].find('span', {'class': 'visually-hidden'}).get_text().strip()
-                    if temp and temp == other_authors_str:
+                            temp = outer_container_list[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
+                            if temp:
+                                description = temp
+                                publication_url = None
+                            else:
+                                description = None
+                                publication_url = outer_container_list[1].find(
+                                    'div', {'class': 'pv2'}).find('a').get('href')
+                    except:
+                        pass
+
+                elif len(outer_container_list) == 1:
+                    try:
+                        temp = outer_container_list[0].find('span', {'class': 'visually-hidden'}).get_text().strip()
+                        if temp and temp != other_authors_str:
+                            description = temp
+                    except:
+                        pass
+                    try:
+                        temp = outer_container_list[0].find('div', {'class': 'pv2'}).find('a').get('href')
+                        if temp:
+                            publication_url = temp
+                    except:
+                        pass
+                    try:
                         url = outer_container_list[0].find('div', {'class': 'overflow-hidden full-width'}).find(
                             'a', {'class': 'optional-action-target-wrapper'}).get('href')
                         driver1.get(url)
@@ -977,58 +1093,19 @@ class Scraper:
                         for k in other_authors_list:
                             temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
                             other_authors.append(temp_author)
+                    except:
+                        pass
 
-                        temp = outer_container_list[1].find('span', {'class': 'visually-hidden'}).get_text().strip()
-                        if temp:
-                            description = temp
-                            publication_url = None
-                        else:
-                            description = None
-                            publication_url = outer_container_list[1].find(
-                                'div', {'class': 'pv2'}).find('a').get('href')
-                except Exception as e:
-                    print(e, 'line 230')
-                    pass
+                else:
+                    description = None
+                    publication_url = None
+                    other_authors = None
 
-            elif len(outer_container_list) == 1:
-                try:
-                    temp = outer_container_list[0].find('span', {'class': 'visually-hidden'}).get_text().strip()
-                    if temp and temp != other_authors_str:
-                        description = temp
-                except Exception as e:
-                    print(e, 'line 239')
-                    pass
-                try:
-                    temp = outer_container_list[0].find('div', {'class': 'pv2'}).find('a').get('href')
-                    if temp:
-                        publication_url = temp
-                except Exception as e:
-                    print(e, 'line 246')
-                    pass
-                try:
-                    url = outer_container_list[0].find('div', {'class': 'overflow-hidden full-width'}).find(
-                        'a', {'class': 'optional-action-target-wrapper'}).get('href')
-                    driver1.get(url)
-                    time.sleep(0.5)
-                    temp_src = driver1.page_source
-                    temp_soup = BeautifulSoup(temp_src, 'lxml')
-                    artdeco_model = temp_soup.find(
-                        'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
-                                         'ember-view pvs-modal__content'})
-                    other_authors_list = artdeco_model.find_all(
-                        'li',
-                        {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
-                    for k in other_authors_list:
-                        temp_author = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
-                        other_authors.append(temp_author)
-                except Exception as e:
-                    print(e, 'line264')
-                    pass
-
-            else:
+            except:
                 description = None
                 publication_url = None
                 other_authors = None
+                pass
 
             publications.update({
                 i: {
@@ -1115,6 +1192,10 @@ class Scraper:
                     else:
                         description = temp
                         associated_with = None
+                else:
+                    associated_with = None
+                    description = None
+
             except:
                 associated_with = None
                 description = None
@@ -1207,76 +1288,76 @@ class Scraper:
         src = self.driver.page_source
         soup = BeautifulSoup(src, 'lxml')
 
-        # try:
-        #     name = self.get_name(soup)
-        #     data['Name'] = name
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     location = self.get_location(soup)
-        #     data['Location'] = location
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     headline = self.get_headline(soup)
-        #     data['Headline'] = headline
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     contact_info_url = self.get_contact_info_url(soup)
-        #     data['Contact_info_url'] = contact_info_url
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     about = self.get_about(soup)
-        #     data['About'] = about
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     no_connections, no_followers = self.no_connections_followers(soup)
-        #     data['No_Connections'] = no_connections
-        #     data['No_Followers'] = no_followers
-        # except Exception as e:
-        #     raise e
+        try:
+            name = self.get_name(soup)
+            data['Name'] = name
+        except Exception as e:
+            raise e
+        try:
+            location = self.get_location(soup)
+            data['Location'] = location
+        except Exception as e:
+            raise e
+        try:
+            headline = self.get_headline(soup)
+            data['Headline'] = headline
+        except Exception as e:
+            raise e
+        try:
+            contact_info_url = self.get_contact_info_url(soup)
+            data['Contact_info_url'] = contact_info_url
+        except Exception as e:
+            raise e
+        try:
+            about = self.get_about(soup)
+            data['About'] = about
+        except Exception as e:
+            raise e
+        try:
+            no_connections, no_followers = self.no_connections_followers(soup)
+            data['No_Connections'] = no_connections
+            data['No_Followers'] = no_followers
+        except Exception as e:
+            raise e
         try:
             experience = self.get_experience(profile_url)
             data['Experience'] = experience
         except Exception as e:
             raise e
-        # try:
-        #     education = self.get_education(profile_url)
-        #     data['Education'] = education
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     certifications = self.get_certifications(profile_url)
-        #     data['Licenses & certifications'] = certifications
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     skills = self.get_skills(profile_url)
-        #     data['Skills'] = skills
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     languages = self.get_languages(profile_url)
-        #     data['Languages'] = languages
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     publications = self.get_publications(profile_url)
-        #     data['Publications'] = publications
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     honors_awards = self.get_honors_awards(profile_url)
-        #     data['Honors & Awards'] = honors_awards
-        # except Exception as e:
-        #     raise e
-        # try:
-        #     courses = self.get_courses(profile_url)
-        #     data['Courses'] = courses
-        # except Exception as e:
-        #     raise e
+        try:
+            education = self.get_education(profile_url)
+            data['Education'] = education
+        except Exception as e:
+            raise e
+        try:
+            certifications = self.get_certifications(profile_url)
+            data['Licenses & certifications'] = certifications
+        except Exception as e:
+            raise e
+        try:
+            skills = self.get_skills(profile_url)
+            data['Skills'] = skills
+        except Exception as e:
+            raise e
+        try:
+            languages = self.get_languages(profile_url)
+            data['Languages'] = languages
+        except Exception as e:
+            raise e
+        try:
+            publications = self.get_publications(profile_url)
+            data['Publications'] = publications
+        except Exception as e:
+            raise e
+        try:
+            honors_awards = self.get_honors_awards(profile_url)
+            data['Honors & Awards'] = honors_awards
+        except Exception as e:
+            raise e
+        try:
+            courses = self.get_courses(profile_url)
+            data['Courses'] = courses
+        except Exception as e:
+            raise e
 
         self.data = data
