@@ -1711,6 +1711,150 @@ class Scraper:
             })
         return organizations
 
+    # FIX BUGS https://www.linkedin.com/in/denniskoutoudis/ AND CHECK SCRAPE BOI
+    def get_projects(self, profile_url):
+        url = profile_url + 'details/projects/'
+        projects = {}
+        associated_with_str = 'Associated with '
+
+        self.load_page(url)
+        src = self.driver.page_source
+        soup = BeautifulSoup(src, 'lxml')
+
+        try:
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
+            if nthn == 'Nothing to see for now':
+                projects = None
+                return projects
+        except AttributeError:
+            pass
+
+        projects_list = soup.find('div', {'class': 'pvs-list__container'}).find_all(
+            'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+
+        other_creators_str = 'Other creators'
+
+        for i, j in enumerate(projects_list):
+            big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
+            display_flex = big_display_flex.find('div', {'class': 'display-flex flex-row justify-space-between'})
+
+            project_name = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
+                'span', {'class': 'visually-hidden'}).get_tex().strip()
+
+            fromm = None
+            to = None
+            try:
+                dates = display_flex.find('span', {'class': 't-14 t-normal'}).find(
+                    'span', {'class': 'visually-hidden'}).get_text().strip().split(' - ')
+                fromm = dates[0]
+                to = dates[1]
+            except:
+                pass
+
+            associated_with = None
+            project_url = None
+            description = None
+            other_creators = []
+            driver1 = self.driver
+            try:
+                outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
+                outer_container_list = outer_container.find('li', {'class': ''})
+
+                if len(outer_container_list) == 4:
+                    associated_with = outer_container_list[0].find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip().replace(associated_with_str, '')
+                    project_url = outer_container_list[1].find('div', {'class': 'pv2'}).find('a').get('href')
+                    description = outer_container_list[2].find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip()
+                    # OTHER CREATORS
+                    url = outer_container_list[3].find('div', {'class': 'overflow-hidden full-width'}).find(
+                        'a', {'class': 'optional-action-target-wrapper'}).get('href')
+                    driver1.get(url)
+                    time.sleep(0.5)
+                    temp_src = driver1.page_source
+                    temp_soup = BeautifulSoup(temp_src, 'lxml')
+                    artdeco_model = temp_soup.find(
+                        'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
+                                         'ember-view pvs-modal__content'})
+                    other_creators_list = artdeco_model.find_all(
+                        'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+                    for k in other_creators_list:
+                        temp_creator = k.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
+                        other_creators.append(temp_creator)
+
+                else:
+                    for k in outer_container_list:
+                        # ASSOCIATED WITH
+                        try:
+                            temp = k.find('span', {'class': 'visually-hidden'}).get_text().strip()
+                            if temp and associated_with_str in temp and temp != other_creators_str:
+                                associated_with = temp.replace(associated_with_str, '')
+                                continue
+                        except:
+                            pass
+
+                        # PROJECT  URL
+                        try:
+                            temp = k.find('div', {'class': 'pv2'}).find('a').get('href')
+                            if temp:
+                                project_url = temp
+                                continue
+                        except:
+                            pass
+
+                        # DESCRIPTION
+                        try:
+                            temp = k.find('span', {'class': 'visually-hidden'}).get_text().strip()
+                            if temp and associated_with_str not in temp and temp != other_creators_str:
+                                description = temp
+                                continue
+                        except:
+                            pass
+
+                        # OTHER CREATORS
+                        try:
+                            url = k.find('div', {'class': 'overflow-hidden full-width'}).find(
+                                'a', {'class': 'optional-action-target-wrapper'}).get('href')
+                            if url:
+                                driver1.get(url)
+                                time.sleep(0.5)
+                                temp_src = driver1.page_source
+                                temp_soup = BeautifulSoup(temp_src, 'lxml')
+                                artdeco_model = temp_soup.find(
+                                    'div', {'class': 'artdeco-modal__content artdeco-modal__content--no-padding '
+                                                     'ember-view pvs-modal__content'})
+                                other_creators_list = artdeco_model.find_all(
+                                    'li', {'class': 'pvs-list__paged-list-item artdeco-list__item '
+                                                    'pvs-list__item--line-separated'})
+                                for oc in other_creators_list:
+                                    temp_creator = oc.find('span', {'class': 'mr1 t-bold'}).get_text().strip()
+                                    other_creators.append(temp_creator)
+                            continue
+                        except:
+                            pass
+            except:
+                associated_with = None
+                project_url = None
+                description = None
+                other_creators = []
+                pass
+
+            projects.update({
+                i: {
+                    'Project_name': project_name,
+                    'From': fromm,
+                    'To': to,
+                    'Associated_with': associated_with,
+                    'Project_url': project_url,
+                    'Description': description,
+                    'Other_creators': other_creators,
+                }
+            })
+        return projects
+
     def scrape(self, profile_url):
 
         data = {
@@ -1736,6 +1880,7 @@ class Scraper:
             'Featured': None,
             'Test_scores': None,
             'Organizations': None,
+            'Projects': None,
         }
 
         # driver = self.load_page(profile_url)
@@ -1743,110 +1888,115 @@ class Scraper:
         src = self.driver.page_source
         soup = BeautifulSoup(src, 'lxml')
 
+        # try:
+        #     profile_picture_url = self.get_profile_picture_url(profile_url)
+        #     data['Profile_picture_url'] = profile_picture_url
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     name = self.get_name(soup)
+        #     data['Name'] = name
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     location = self.get_location(soup)
+        #     data['Location'] = location
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     headline = self.get_headline(soup)
+        #     data['Headline'] = headline
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     contact_info_url = self.get_contact_info_url(soup)
+        #     data['Contact_info_url'] = contact_info_url
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     about = self.get_about(soup)
+        #     data['About'] = about
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     no_connections, no_followers = self.no_connections_followers(soup)
+        #     data['No_Connections'] = no_connections
+        #     data['No_Followers'] = no_followers
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     experience = self.get_experience(profile_url)
+        #     data['Experience'] = experience
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     education = self.get_education(profile_url)
+        #     data['Education'] = education
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     certifications = self.get_certifications(profile_url)
+        #     data['Licenses & certifications'] = certifications
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     skills = self.get_skills(profile_url)
+        #     data['Skills'] = skills
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     languages = self.get_languages(profile_url)
+        #     data['Languages'] = languages
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     publications = self.get_publications(profile_url)
+        #     data['Publications'] = publications
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     honors_awards = self.get_honors_awards(profile_url)
+        #     data['Honors & Awards'] = honors_awards
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     courses = self.get_courses(profile_url)
+        #     data['Courses'] = courses
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     recommendations = self.get_recommendations(profile_url)
+        #     data['Recommendations'] = recommendations
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     volunteering_experience = self.get_volunteering_experience(profile_url)
+        #     data['Volunteering_experience'] = volunteering_experience
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     causes = self.get_causes(soup)
+        #     data['Causes'] = causes
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     featured = self.get_featured(profile_url)
+        #     data['Featured'] = featured
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     test_scores = self.get_test_scores(profile_url)
+        #     data['Test_scores'] = test_scores
+        # except Exception as e:
+        #     raise e
+        # try:
+        #     organizations = self.get_organizations(profile_url)
+        #     data['Organizations'] = organizations
+        # except Exception as e:
+        #     raise e
         try:
-            profile_picture_url = self.get_profile_picture_url(profile_url)
-            data['Profile_picture_url'] = profile_picture_url
-        except Exception as e:
-            raise e
-        try:
-            name = self.get_name(soup)
-            data['Name'] = name
-        except Exception as e:
-            raise e
-        try:
-            location = self.get_location(soup)
-            data['Location'] = location
-        except Exception as e:
-            raise e
-        try:
-            headline = self.get_headline(soup)
-            data['Headline'] = headline
-        except Exception as e:
-            raise e
-        try:
-            contact_info_url = self.get_contact_info_url(soup)
-            data['Contact_info_url'] = contact_info_url
-        except Exception as e:
-            raise e
-        try:
-            about = self.get_about(soup)
-            data['About'] = about
-        except Exception as e:
-            raise e
-        try:
-            no_connections, no_followers = self.no_connections_followers(soup)
-            data['No_Connections'] = no_connections
-            data['No_Followers'] = no_followers
-        except Exception as e:
-            raise e
-        try:
-            experience = self.get_experience(profile_url)
-            data['Experience'] = experience
-        except Exception as e:
-            raise e
-        try:
-            education = self.get_education(profile_url)
-            data['Education'] = education
-        except Exception as e:
-            raise e
-        try:
-            certifications = self.get_certifications(profile_url)
-            data['Licenses & certifications'] = certifications
-        except Exception as e:
-            raise e
-        try:
-            skills = self.get_skills(profile_url)
-            data['Skills'] = skills
-        except Exception as e:
-            raise e
-        try:
-            languages = self.get_languages(profile_url)
-            data['Languages'] = languages
-        except Exception as e:
-            raise e
-        try:
-            publications = self.get_publications(profile_url)
-            data['Publications'] = publications
-        except Exception as e:
-            raise e
-        try:
-            honors_awards = self.get_honors_awards(profile_url)
-            data['Honors & Awards'] = honors_awards
-        except Exception as e:
-            raise e
-        try:
-            courses = self.get_courses(profile_url)
-            data['Courses'] = courses
-        except Exception as e:
-            raise e
-        try:
-            recommendations = self.get_recommendations(profile_url)
-            data['Recommendations'] = recommendations
-        except Exception as e:
-            raise e
-        try:
-            volunteering_experience = self.get_volunteering_experience(profile_url)
-            data['Volunteering_experience'] = volunteering_experience
-        except Exception as e:
-            raise e
-        try:
-            causes = self.get_causes(soup)
-            data['Causes'] = causes
-        except Exception as e:
-            raise e
-        try:
-            featured = self.get_featured(profile_url)
-            data['Featured'] = featured
-        except Exception as e:
-            raise e
-        try:
-            test_scores = self.get_test_scores(profile_url)
-            data['Test_scores'] = test_scores
-        except Exception as e:
-            raise e
-        try:
-            organizations = self.get_organizations(profile_url)
-            data['Organizations'] = organizations
+            projects = self.get_projects(profile_url)
+            data['Projects'] = projects
         except Exception as e:
             raise e
 
