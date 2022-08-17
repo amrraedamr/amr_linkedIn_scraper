@@ -860,10 +860,10 @@ class Scraper:
         soup = BeautifulSoup(src, 'lxml')
 
         try:
-            nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
-                'h2', {
-                    'class': 'artdeco-empty-state__headline artdeco-empty-state__headline--mercado-empty-room-large '
-                             'artdeco-empty-state__headline--mercado-spots-large'}).get_text().strip()
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
             if nthn == 'Nothing to see for now':
                 langs = None
                 return langs
@@ -1143,10 +1143,10 @@ class Scraper:
         soup = BeautifulSoup(src, 'lxml')
 
         try:
-            nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
-                'h2', {
-                    'class': 'artdeco-empty-state__headline artdeco-empty-state__headline--mercado-empty-room-large '
-                             'artdeco-empty-state__headline--mercado-spots-large'}).get_text().strip()
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
             if nthn == 'Nothing to see for now':
                 honors_awards = None
                 return honors_awards
@@ -1289,11 +1289,11 @@ class Scraper:
 
             # NTHN
             try:
-                nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
+                nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                    'div', {'class': 'artdeco-tabpanel active ember-view'}).find(
                     'div', {'class': 'pvs-list__container'}).find(
-                    'li',
-                    {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
-                    'h2').get_text().strip()
+                    'li', {'class': 'pvs-list__paged-list-item artdeco-list__item '
+                                    'pvs-list__item--line-separated'}).find('h2').get_text().strip()
                 if nthn == "You haven't received a recommendation yet":
                     recommendations_received = None
             except AttributeError:
@@ -1354,11 +1354,11 @@ class Scraper:
 
             # NTHN
             try:
-                nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
+                nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                    'div', {'class': 'artdeco-tabpanel active ember-view'}).find(
                     'div', {'class': 'pvs-list__container'}).find(
-                    'li',
-                    {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
-                    'h2').get_text().strip()
+                    'li', {'class': 'pvs-list__paged-list-item artdeco-list__item '
+                                    'pvs-list__item--line-separated'}).find('h2').get_text().strip()
                 if nthn == "You haven't written any recommendations yet":
                     recommendations_given = None
             except AttributeError:
