@@ -1531,6 +1531,188 @@ class Scraper:
             })
         return volunteering_experiences
 
+    def get_causes(self, soup):
+        try:
+            panels = soup.find_all('section', {'class': 'artdeco-card ember-view relative break-words pb3 mt2'})
+            for panel in panels:
+                temp = panel.find('div', {'id': 'volunteer_causes'})
+                if temp:
+                    causes = panel.find('div', {'class': 'display-flex ph5 pv3'}).find(
+                        'span', {'class': 'visually-hidden'}).get_text().strip().split(' • ')
+                    return causes
+
+        except Exception as e:
+            raise e
+
+    # PROBABLY WANNA ADD MORE TO THIS BUT FOR NOW IS GOOD ENOUGH
+    def get_featured(self, profile_url):
+        url = profile_url + 'details/featured/'
+        featured = {}
+
+        self.load_page(url)
+        src = self.driver.page_source
+        soup = BeautifulSoup(src, 'lxml')
+
+        try:
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item pvs-list__item--with-gap'}).find('h2').get_text().strip()
+            if nthn == 'Nothing to see for now':
+                featured = None
+                return featured
+        except AttributeError:
+            pass
+
+        featured_list = soup.find('div', {'class': 'pvs-list__container'}).find_all(
+            'li', {'class': 'pvs-list__paged-list-item pvs-list__item--with-gap'})
+
+        for i, j in enumerate(featured_list):
+            link = j.find('a').get('href')
+            featured.update({
+                i: {
+                    'Link': link
+                }
+            })
+        return featured
+
+    def get_test_scores(self, profile_url):
+        url = profile_url + 'details/testscores/'
+        test_scores = {}
+
+        self.load_page(url)
+        src = self.driver.page_source
+        soup = BeautifulSoup(src, 'lxml')
+
+        try:
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
+            if nthn == 'Nothing to see for now':
+                test_scores = None
+                return test_scores
+        except AttributeError:
+            pass
+
+        test_scores_list = soup.find('div', {'class': 'pvs-list__container'}).find_all(
+            'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+
+        for i, j in enumerate(test_scores_list):
+            big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
+            display_flex = big_display_flex.find('div', {'class': 'display-flex flex-row justify-space-between'})
+
+            title = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
+                'span', {'class': 'visually-hidden'}).get_text().strip()
+
+            score_date = display_flex.find('span', {'class': 't-14 t-normal'}).find(
+                'span', {'class': 'visually-hidden'}).get_text().strip().split(' · ')
+            score = score_date[0].replace('Score: ', '')
+            if len(score_date) == 2:
+                test_date = score_date[1]
+            elif len(score_date) == 1:
+                test_date = None
+            else:
+                test_date = None
+
+            try:
+                outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
+                description = outer_container.find('span', {'class': 'visually-hidden'}).get_text().strip()
+            except:
+                description = None
+                pass
+
+            test_scores.update({
+                i: {
+                    'Title': title,
+                    'Score': score,
+                    'Test_date': test_date,
+                    'Description': description
+                }
+            })
+        return test_scores
+
+    def get_organizations(self, profile_url):
+        url = profile_url + 'details/organizations/'
+        organizations = {}
+        months = ['Jan ', 'Feb ', 'Mar ', 'Apr ',
+                  'May ', 'Jun ', 'Jul ', 'Aug ',
+                  'Sep ', 'Oct ', 'Nov ', 'Dec ']
+
+        self.load_page(url)
+        src = self.driver.page_source
+        soup = BeautifulSoup(src, 'lxml')
+
+        try:
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
+            if nthn == 'Nothing to see for now':
+                organizations = None
+                return organizations
+        except AttributeError:
+            pass
+
+        organizations_list = soup.find('div', {'class': 'pvs-list__container'}).find_all(
+            'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
+
+        for i, j in enumerate(organizations_list):
+            big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
+            display_flex = big_display_flex.find('div', {'class': 'display-flex flex-row justify-space-between'})
+
+            organization_name = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
+                'span', {'class': 'visually-hidden'}).get_text().strip()
+
+            try:
+                position_dates = display_flex.find('span', {'class': 't-14 t-normal'}).find(
+                    'span', {'class': 'visually-hidden'}).get_text().strip().split(' · ')
+                position = None
+                fromm = None
+                to = None
+
+                if len(position_dates) == 2:
+                    position = position_dates[0]
+                    from_to = position_dates[1].split(' - ')
+                    fromm = from_to[0]
+                    to = from_to[1]
+                elif len(position_dates) == 1:
+                    temp = position_dates[0]
+                    for month in months:
+                        if month in temp:
+                            position = None
+                            from_to = temp.split(' - ')
+                            fromm = from_to[0]
+                            to = from_to[1]
+                            temp = None
+                            break
+                    if temp:
+                        position = temp
+                        fromm = None
+                        to = None
+            except:
+                position = None
+                fromm = None
+                to = None
+                pass
+
+            try:
+                outer_container = big_display_flex.find('div', {'class': 'pvs-list__outer-container'})
+                description = outer_container.find('span', {'class': 'visually-hidden'}).get_text().strip()
+            except:
+                description = None
+                pass
+
+            organizations.update({
+                i: {
+                    'Organization_name': organization_name,
+                    'Position': position,
+                    'From': fromm,
+                    'To': to,
+                    'Description': description
+                }
+            })
+        return organizations
+
     def scrape(self, profile_url):
 
         data = {
@@ -1552,6 +1734,10 @@ class Scraper:
             'Courses': None,
             'Recommendations': None,
             'Volunteering_experience': None,
+            'Causes': None,
+            'Featured': None,
+            'Test_scores': None,
+            'Organizations': None,
         }
 
         # driver = self.load_page(profile_url)
@@ -1643,6 +1829,26 @@ class Scraper:
         try:
             volunteering_experience = self.get_volunteering_experience(profile_url)
             data['Volunteering_experience'] = volunteering_experience
+        except Exception as e:
+            raise e
+        try:
+            causes = self.get_causes(soup)
+            data['Causes'] = causes
+        except Exception as e:
+            raise e
+        try:
+            featured = self.get_featured(profile_url)
+            data['Featured'] = featured
+        except Exception as e:
+            raise e
+        try:
+            test_scores = self.get_test_scores(profile_url)
+            data['Test_scores'] = test_scores
+        except Exception as e:
+            raise e
+        try:
+            organizations = self.get_organizations(profile_url)
+            data['Organizations'] = organizations
         except Exception as e:
             raise e
 
