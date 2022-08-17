@@ -179,20 +179,19 @@ class Scraper:
         src = self.driver.page_source
         soup = BeautifulSoup(src, 'lxml')
 
-        exp_list = soup.find_all('li', {
-            'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
-
         try:
-            nthn = exp_list[0].find(
-                'h2',
-                {'class':
-                     'artdeco-empty-state__headline artdeco-empty-state__headline--mercado-empty-room-large '
-                     'artdeco-empty-state__headline--mercado-spots-large'}).get_text().strip()
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
             if nthn == 'Nothing to see for now':
                 experiences = None
                 return experiences
         except:
             pass
+
+        exp_list = soup.find_all('li', {
+            'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
 
         # HANDLE EDGE CASE FOR https://www.linkedin.com/in/sandraaclark/details/experience/
         counter = 0
@@ -553,6 +552,17 @@ class Scraper:
         src = self.driver.page_source
         soup = BeautifulSoup(src, 'lxml')
 
+        try:
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
+            if nthn == 'Nothing to see for now':
+                educations = None
+                return educations
+        except:
+            pass
+
         edu_list = soup.find_all('li', {
             'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
 
@@ -566,24 +576,6 @@ class Scraper:
             grade = None
             activities_societies = None
             description = None
-
-            try:
-                nthn = j.find(
-                    'h2',
-                    {'class':
-                         'artdeco-empty-state__headline artdeco-empty-state__headline--mercado-empty-room-large artdeco-empty-state__headline--mercado-spots-large'}).get_text().strip()
-                if nthn == 'Nothing to see for now':
-                    educations = None
-                    return educations
-            except:
-                pass
-            try:
-                nthn = j.find('h2').get_text().strip()
-                if nthn == 'Nothing to see for now':
-                    educations = None
-                    return educations
-            except AttributeError:
-                pass
 
             display_flex = j.find('div', {'class': 'display-flex flex-row justify-space-between'})
             university = display_flex.find('div', {'class': 'display-flex align-items-center'}).find('span', {
