@@ -660,18 +660,22 @@ class Scraper:
         src = self.driver.page_source
         soup = BeautifulSoup(src, 'lxml')
 
+        try:
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
+            if nthn == 'Nothing to see for now':
+                certifications = None
+                return certifications
+        except AttributeError:
+            pass
+
         cer_list = soup.find_all('li', {
             'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'})
 
         for i, j in enumerate(cer_list):
             issue_date, expiry_date, credential_id = None, None, None,
-            try:
-                nthn = j.find('h2').get_text().strip()
-                if nthn == 'Nothing to see for now':
-                    certifications = None
-                    return certifications
-            except AttributeError:
-                pass
 
             display_flex = j.find('div', {'class': 'display-flex flex-row justify-space-between'})
             try:
