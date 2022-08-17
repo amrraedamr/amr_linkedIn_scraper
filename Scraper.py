@@ -904,10 +904,10 @@ class Scraper:
         soup = BeautifulSoup(src, 'lxml')
 
         try:
-            nthn = soup.find('section', {'class': 'artdeco-card ember-view pb3'}).find(
-                'h2', {
-                    'class': 'artdeco-empty-state__headline artdeco-empty-state__headline--mercado-empty-room-large '
-                             'artdeco-empty-state__headline--mercado-spots-large'}).get_text().strip()
+            nthn = soup.find('main', {'class': 'scaffold-layout__main'}).find(
+                'div', {'class': 'pvs-list__container'}).find(
+                'li', {'class': 'pvs-list__paged-list-item artdeco-list__item pvs-list__item--line-separated'}).find(
+                'h2').get_text().strip()
             if nthn == 'Nothing to see for now':
                 publications = None
                 return publications
@@ -1308,9 +1308,11 @@ class Scraper:
 
                     big_display_flex = j.find('div', {'class': 'display-flex flex-column full-width align-self-center'})
 
-                    display_flex = big_display_flex.find('div', {'class': 'display-flex flex-row justify-space-between'})
+                    display_flex = big_display_flex.find('div',
+                                                         {'class': 'display-flex flex-row justify-space-between'})
                     link = display_flex.find(
-                        'a', {'class': 'optional-action-target-wrapper display-flex flex-column full-width'}).get('href')
+                        'a', {'class': 'optional-action-target-wrapper display-flex flex-column full-width'}).get(
+                        'href')
                     name = display_flex.find('div', {'class': 'display-flex align-items-center'}).find(
                         'span', {'class': 'visually-hidden'}).get_text().strip()
                     try:
