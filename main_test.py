@@ -7,7 +7,7 @@ from Scraper import Scraper
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 email = "ztataz04@gmail.com"
 password = "DR#(Li,g#2Q.F,Z"
-linkedin_url = 'https://www.linkedin.com/in/denniskoutoudis/'
+linkedin_url = 'https://www.linkedin.com/in/otamimi/'
 
 obj = Scraper(driver, email, password)
 obj.scrape_profile(linkedin_url)
